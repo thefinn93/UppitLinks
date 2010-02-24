@@ -40,22 +40,24 @@ import urllib
 
 reddit = RedditSession()
 
-reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S*)")
+reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S+)")
 redditsub_re = re.compile(r"(http://([^/]*\.)?reddit.com/(r/[^/]+/)?comments/(?P<id>[^/]+))")
 reddituser_re = re.compile(r"(http://([^/]*\.)?reddit.com/user/(?P<username>[^/]+))")
 
 def find_links(text):
-    def present_listing_first(res):
-        d = res.get("data", {}).get("children", [{}])[0].get("data",{}) 
+    def present_listing_first(res, original_link=False):
+        d = res.get("data", {}).get("children", [{}])[0].get("data",{})
         if d:
-            info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/"
+            if not original_link:
+                d["url"] = "http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/" % d
+            info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- %(url)s"
             return (info % d)
         
 
     links = utils.web.urlRe.findall(text)
     for link in links:
-        link_m = reddit_re.match(link)
-        if link_m:
+        reddit_m = reddit_re.match(link)
+        if reddit_m:
             user_m = reddituser_re.match(link)
             sub_m = redditsub_re.match(link)
             if user_m:
@@ -68,7 +70,7 @@ def find_links(text):
             elif sub_m:
                 d = sub_m.groupdict()
                 res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(d['id']))
-                yield present_listing_first(res)
+                yield present_listing_first(res, original_link=True)
             
         else:
             res = reddit.API_GET("/api/info.json?limit=1&url=%s" %
