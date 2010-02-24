@@ -44,20 +44,29 @@ reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S+)")
 redditsub_re = re.compile(r"(http://([^/]*\.)?reddit.com/(r/[^/]+/)?comments/(?P<id>[^/]+))")
 reddituser_re = re.compile(r"(http://([^/]*\.)?reddit.com/user/(?P<username>[^/]+))")
 
-def present_listing_first(res, original_link=False):
+def present_listing_first(res, original_link=False, color_score=False):
     d = res.get("data", {}).get("children", [{}])[0].get("data",{})
     if d:
         if not original_link:
             d["url"] = "http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/" % d
-        info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- %(url)s"
-        return (info % d)
+            
+        if color_score:
+            score_part = "(%s/%s)[%s]" % (ircutils.mircColor("%(ups)s", "orange"),
+                                          ircutils.mircColor("%(downs)s", "light blue"),
+                                          ircutils.mircColor("%(num_comments)s", "dark grey"))
+        else:
+            score_part = "(%(score)s)"
+        title_part = ircutils.bold("%(title)s")
+        url_part = ircutils.underline("%(url)s")
+        template = "%s \"%s\" %s" % (score_part, title_part, url_part)
+        return (template % d)
         
 def present_user(res):
     d = res.get("data")
     if d:
         return ("User \"%(name)s\" has karma %(link_karma)s" % d)
 
-def _present_links(text):
+def _present_links(text, color=False):
     links = utils.web.urlRe.findall(text)
     for link in links:
         reddit_m = reddit_re.match(link)
@@ -70,14 +79,14 @@ def _present_links(text):
             
             elif sub_m:
                 res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(sub_m.group("id")))
-                yield present_listing_first(res, original_link=True)
+                yield present_listing_first(res, original_link=True, color_score=color)
             
         else:
             res = reddit.API_GET("/api/info.json?limit=1&url=%s" % urllib.quote(link))
-            yield present_listing_first(res)
+            yield present_listing_first(res, color_score=color)
 
-def present_links(text):
-    return filter(None, _present_links(text))
+def present_links(text, *args, **kwargs):
+    return filter(None, _present_links(text, *args, **kwargs))
 
 class RedditLinks(callbacks.Plugin):
     """Add the help for "@plugin help RedditLinks" here
@@ -92,7 +101,7 @@ class RedditLinks(callbacks.Plugin):
                 text = ircmsgs.unAction(msg)
             else:
                 text = msg.args[1]
-            for info in present_links(text):
+            for info in present_links(text, color=True):
                 irc.reply(info, prefixNick=False)
 
 Class = RedditLinks
