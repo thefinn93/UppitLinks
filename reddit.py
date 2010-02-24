@@ -1,23 +1,5 @@
 import httplib, urllib
-from mako.filters import url_escape
-from BeautifulSoup import BeautifulSoup
 import simplejson
-
-def query_string(dict):
-    pairs = []
-    for k,v in dict.iteritems():
-        if v is not None:
-            try:
-                k = url_escape(unicode(k).encode('utf-8'))
-                v = url_escape(unicode(v).encode('utf-8'))
-                pairs.append(k + '=' + v)
-            except UnicodeDecodeError:
-                continue
-    if pairs:
-        return '&'.join(pairs)
-    else:
-        return ''
-
 
 class Session(object):
     ignore_cookies = []
@@ -64,7 +46,7 @@ class RedditSession(Session):
         self.user = user
         Session.__init__(self, domain, port)
         if user and password:
-            r = self.API("login", dict(user = user, passwd = password))
+            r = self.API_POST("login", dict(user = user, passwd = password))
             if r:
                 r = r['json']
                 if not r['errors']:

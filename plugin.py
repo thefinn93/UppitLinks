@@ -31,53 +31,66 @@
 import supybot.utils as utils
 from supybot.commands import *
 import supybot.plugins as plugins
+import supybot.ircmsgs as ircmsgs
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
 import re 
 from reddit import RedditSession
-from mako.filters import url_escape
+import urllib
 
 reddit = RedditSession()
 
-domain_re = re.compile(r"(http://\S+)")
 reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S*)")
+redditsub_re = re.compile(r"(http://([^/]*\.)?reddit.com/(r/[^/]+/)?comments/(?P<id>[^/]+))")
 reddituser_re = re.compile(r"(http://([^/]*\.)?reddit.com/user/(?P<username>[^/]+))")
 
 def find_links(text):
-    print "HERE", text
-    links = domain_re.findall(text)
+    def present_listing_first(res):
+        d = res.get("data", {}).get("children", [{}])[0].get("data",{}) 
+        if d:
+            info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/"
+            return (info % d)
+        
+
+    links = utils.web.urlRe.findall(text)
     for link in links:
-        m = reddit_re.match(link)
-        if m:
-            m = reddituser_re.match(link)
-            if m:
-                d = m.groupdict()
-                res = reddit.API_GET("/user/%s/about.json" % d['username'])
+        link_m = reddit_re.match(link)
+        if link_m:
+            user_m = reddituser_re.match(link)
+            sub_m = redditsub_re.match(link)
+            if user_m:
+                d = user_m.groupdict()   
+                res = reddit.API_GET("/user/%s/about.json" % urllib.quote(d['username']))
                 d = res.get("data")
                 if d:
-                    yield ("User '%(name)s' has karma %(link_karma)s" % d)
+                    yield ("User \"%(name)s\" has karma %(link_karma)s" % d)
+            
+            elif sub_m:
+                d = sub_m.groupdict()
+                res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(d['id']))
+                yield present_listing_first(res)
+            
         else:
             res = reddit.API_GET("/api/info.json?limit=1&url=%s" %
-                                 url_escape(link))
-            d = res.get("data", {}).get("children", [{}])[0].get("data",{}) 
-            if d:
-                d['link'] = link
-                yield ("%(url)s ==> http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/ which has %(ups)s ups and %(downs)s downs." % d)
+                                 urllib.quote(link))
+            yield present_listing_first(res)
 
 
 class RedditLinks(callbacks.Plugin):
     """Add the help for "@plugin help RedditLinks" here
     This should describe *how* to use this plugin."""
-    noIgnore = True
-    def __init__(self, irc):
-        self.__parent = super(RedditLinks, self)
-        self.__parent.__init__(irc)
-
-    def __call__(self, irc, msg):
-        self.__parent.__call__(irc, msg)
-        recipients, text = msg.args
-        print irc.__class__
-        return "\n".join(l for l in find_links(text))
+        
+    def doPrivmsg(self, irc, msg):
+        if ircmsgs.isCtcp(msg) and not ircmsgs.isAction(msg):
+            return
+        channel = msg.args[0]
+        if irc.isChannel(channel):
+            if ircmsgs.isAction(msg):
+                text = ircmsgs.unAction(msg)
+            else:
+                text = msg.args[1]
+            for info in find_links(text):
+                irc.reply(info, prefixNick=False)
 
 Class = RedditLinks
 
