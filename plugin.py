@@ -44,16 +44,20 @@ reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S+)")
 redditsub_re = re.compile(r"(http://([^/]*\.)?reddit.com/(r/[^/]+/)?comments/(?P<id>[^/]+))")
 reddituser_re = re.compile(r"(http://([^/]*\.)?reddit.com/user/(?P<username>[^/]+))")
 
-def find_links(text):
-    def present_listing_first(res, original_link=False):
-        d = res.get("data", {}).get("children", [{}])[0].get("data",{})
-        if d:
-            if not original_link:
-                d["url"] = "http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/" % d
-            info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- %(url)s"
-            return (info % d)
+def present_listing_first(res, original_link=False):
+    d = res.get("data", {}).get("children", [{}])[0].get("data",{})
+    if d:
+        if not original_link:
+            d["url"] = "http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/" % d
+        info = "(%(score)s) \""+ircutils.bold("%(title)s")+"\" -- %(url)s"
+        return (info % d)
         
+def present_user(res):
+    d = res.get("data")
+    if d:
+        return ("User \"%(name)s\" has karma %(link_karma)s" % d)
 
+def _present_links(text):
     links = utils.web.urlRe.findall(text)
     for link in links:
         reddit_m = reddit_re.match(link)
@@ -61,22 +65,19 @@ def find_links(text):
             user_m = reddituser_re.match(link)
             sub_m = redditsub_re.match(link)
             if user_m:
-                d = user_m.groupdict()   
-                res = reddit.API_GET("/user/%s/about.json" % urllib.quote(d['username']))
-                d = res.get("data")
-                if d:
-                    yield ("User \"%(name)s\" has karma %(link_karma)s" % d)
+                res = reddit.API_GET("/user/%s/about.json" % urllib.quote(user_m.group("username")))
+                yield present_user(res)
             
             elif sub_m:
-                d = sub_m.groupdict()
-                res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(d['id']))
+                res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(sub_m.group("id")))
                 yield present_listing_first(res, original_link=True)
             
         else:
-            res = reddit.API_GET("/api/info.json?limit=1&url=%s" %
-                                 urllib.quote(link))
+            res = reddit.API_GET("/api/info.json?limit=1&url=%s" % urllib.quote(link))
             yield present_listing_first(res)
 
+def present_links(text):
+    return filter(None, _present_links(text))
 
 class RedditLinks(callbacks.Plugin):
     """Add the help for "@plugin help RedditLinks" here
@@ -91,7 +92,7 @@ class RedditLinks(callbacks.Plugin):
                 text = ircmsgs.unAction(msg)
             else:
                 text = msg.args[1]
-            for info in find_links(text):
+            for info in present_links(text):
                 irc.reply(info, prefixNick=False)
 
 Class = RedditLinks
