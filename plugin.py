@@ -88,8 +88,8 @@ def _present_links(text, color=False):
 def present_links(text, *args, **kwargs):
     return filter(None, _present_links(text, *args, **kwargs))
 
-class RedditLinks(callbacks.Plugin):
-    """Add the help for "@plugin help RedditLinks" here
+class UppitLinks(callbacks.Plugin):
+    """Add the help for "@plugin help UppitLinks" here
     This should describe *how* to use this plugin."""
 
     def doPrivmsg(self, irc, msg):
@@ -104,7 +104,7 @@ class RedditLinks(callbacks.Plugin):
             for info in present_links(text, color=True):
                 irc.reply(info, prefixNick=False)
 
-Class = RedditLinks
+Class = UppitLinks
 
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:

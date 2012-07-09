@@ -37,10 +37,10 @@ def configure(advanced):
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
     from supybot.questions import expect, anything, something, yn
-    conf.registerPlugin('RedditLinks', True)
+    conf.registerPlugin('UppitLinks', True)
 
 
-RedditLinks = conf.registerPlugin('RedditLinks')
+UppitLinks = conf.registerPlugin('UppitLinks')
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(RedditLinks, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))
