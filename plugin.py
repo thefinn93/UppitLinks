@@ -34,22 +34,22 @@ import supybot.plugins as plugins
 import supybot.ircmsgs as ircmsgs
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
-import re 
+import re
 from reddit import RedditSession
 import urllib
 
 reddit = RedditSession()
 
-reddit_re = re.compile(r"(http://([^/]*\.)?reddit.com/\S+)")
-redditsub_re = re.compile(r"(http://([^/]*\.)?reddit.com/(r/[^/]+/)?comments/(?P<id>[^/]+))")
-reddituser_re = re.compile(r"(http://([^/]*\.)?reddit.com/user/(?P<username>[^/]+))")
+reddit_re = re.compile(r"(http://([^/]*\.)?uppit.us/\S+)")
+redditsub_re = re.compile(r"(http://([^/]*\.)?uppit.us/(r/[^/]+/)?comments/(?P<id>[^/]+))")
+reddituser_re = re.compile(r"(http://([^/]*\.)?uppit.us/user/(?P<username>[^/]+))")
 
 def present_listing_first(res, original_link=False, color_score=False):
     d = res.get("data", {}).get("children", [{}])[0].get("data",{})
     if d:
         if not original_link:
-            d["url"] = "http://www.reddit.com/r/%(subreddit)s/comments/%(id)s/" % d
-            
+            d["url"] = "http://uppit.us/r/%(subreddit)s/comments/%(id)s/" % d
+
         if color_score:
             score_part = "(%s/%s)[%s]" % (ircutils.mircColor("%(ups)s", "orange"),
                                           ircutils.mircColor("%(downs)s", "light blue"),
@@ -60,7 +60,7 @@ def present_listing_first(res, original_link=False, color_score=False):
         url_part = ircutils.underline("%(url)s")
         template = "%s \"%s\" %s" % (score_part, title_part, url_part)
         return (template % d)
-        
+
 def present_user(res):
     d = res.get("data")
     if d:
@@ -76,11 +76,11 @@ def _present_links(text, color=False):
             if user_m:
                 res = reddit.API_GET("/user/%s/about.json" % urllib.quote(user_m.group("username")))
                 yield present_user(res)
-            
+
             elif sub_m:
                 res = reddit.API_GET("/by_id/t3_%s.json" % urllib.quote(sub_m.group("id")))
                 yield present_listing_first(res, original_link=True, color_score=color)
-            
+
         else:
             res = reddit.API_GET("/api/info.json?limit=1&url=%s" % urllib.quote(link))
             yield present_listing_first(res, color_score=color)
@@ -91,7 +91,7 @@ def present_links(text, *args, **kwargs):
 class RedditLinks(callbacks.Plugin):
     """Add the help for "@plugin help RedditLinks" here
     This should describe *how* to use this plugin."""
-        
+
     def doPrivmsg(self, irc, msg):
         if ircmsgs.isCtcp(msg) and not ircmsgs.isAction(msg):
             return
