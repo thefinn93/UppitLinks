@@ -40,8 +40,8 @@ class Session(object):
 
 class RedditSession(Session):
     ignore_cookies = ["reddit_first"]
-    def __init__(self, user = None, password = None, 
-                 domain = "www.reddit.com", port = 80):
+    def __init__(self, user = None, password = None,
+                 domain = "uppit.us", port = 80):
         self.modhash = None
         self.user = user
         Session.__init__(self, domain, port)
