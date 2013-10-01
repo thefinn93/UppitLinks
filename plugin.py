@@ -45,21 +45,24 @@ redditsub_re = re.compile(r"(http://([^/]*\.)?uppit.us/(r/[^/]+/)?comments/(?P<i
 reddituser_re = re.compile(r"(http://([^/]*\.)?uppit.us/user/(?P<username>[^/]+))")
 
 def present_listing_first(res, original_link=False, color_score=False):
-    d = res.get("data", {}).get("children", [{}])[0].get("data",{})
-    if d:
-        if not original_link:
-            d["url"] = "http://uppit.us/r/%(subreddit)s/comments/%(id)s/" % d
+    try:
+        d = res.get("data", {}).get("children", [{}])[0].get("data",{})
+        if d:
+            if not original_link:
+                d["url"] = "http://uppit.us/r/%(subreddit)s/comments/%(id)s/" % d
 
-        if color_score:
-            score_part = "(%s/%s)[%s]" % (ircutils.mircColor("%(ups)s", "orange"),
-                                          ircutils.mircColor("%(downs)s", "light blue"),
-                                          ircutils.mircColor("%(num_comments)s", "dark grey"))
-        else:
-            score_part = "(%(score)s)"
-        title_part = ircutils.bold("%(title)s")
-        url_part = ircutils.underline("%(url)s")
-        template = "%s \"%s\" %s" % (score_part, title_part, url_part)
-        return (template % d)
+            if color_score:
+                score_part = "(%s/%s)[%s]" % (ircutils.mircColor("%(ups)s", "orange"),
+                                              ircutils.mircColor("%(downs)s", "light blue"),
+                                              ircutils.mircColor("%(num_comments)s", "dark grey"))
+            else:
+                score_part = "(%(score)s)"
+            title_part = ircutils.bold("%(title)s")
+            url_part = ircutils.underline("%(url)s")
+            template = "%s \"%s\" %s" % (score_part, title_part, url_part)
+            return (template % d)
+    except IndexError:
+        pass
 
 def present_user(res):
     d = res.get("data")
